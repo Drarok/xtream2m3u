@@ -15,7 +15,7 @@ from fake_useragent import UserAgent
 from flask import Flask, Response, jsonify, request, send_from_directory
 
 # Configure logging
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -134,14 +134,16 @@ def fetch_api_data(url, timeout=10):
         return {"error": "Request Exception", "details": str(e)}, 503
 
 
-def stream_request(url, headers=None, timeout=10):
+def stream_request(url, headers=None, timeout=30):
     """Make a streaming request that doesn't buffer the full response"""
     if not headers:
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Connection": "keep-alive",
         }
 
-    return requests.get(url, stream=True, headers=headers, timeout=timeout)
+    # Use longer timeout for streams and set both connect and read timeouts
+    return requests.get(url, stream=True, headers=headers, timeout=(10, timeout))
 
 
 def encode_url(url):
@@ -162,9 +164,24 @@ def generate_streaming_response(response, content_type=None):
                     bytes_sent += len(chunk)
                     yield chunk
             logger.info(f"Stream completed, sent {bytes_sent} bytes")
+        except requests.exceptions.ChunkedEncodingError as e:
+            # Chunked encoding error from upstream - log and stop gracefully
+            logger.warning(f"Upstream chunked encoding error after {bytes_sent} bytes: {str(e)}")
+            # Don't raise - just stop yielding to close stream gracefully
+        except requests.exceptions.ConnectionError as e:
+            # Connection error (reset, timeout, etc.) - log and stop gracefully
+            logger.warning(f"Connection error after {bytes_sent} bytes: {str(e)}")
+            # Don't raise - just stop yielding to close stream gracefully
         except Exception as e:
-            logger.error(f"Streaming error: {str(e)}")
-            raise
+            logger.error(f"Streaming error after {bytes_sent} bytes: {str(e)}")
+            # Don't raise exceptions in generators after headers are sent!
+            # Raising here causes Flask to inject "HTTP/1.1 500" into the chunked body,
+        finally:
+            # Always close the upstream response to free resources
+            try:
+                response.close()
+            except:
+                pass
 
     headers = {
         "Access-Control-Allow-Origin": "*",
@@ -213,7 +230,7 @@ def proxy_stream(stream_url):
         original_url = urllib.parse.unquote(stream_url)
         logger.info(f"Stream proxy request for: {original_url}")
 
-        response = stream_request(original_url)
+        response = stream_request(original_url, timeout=60)  # Longer timeout for live streams
         response.raise_for_status()
 
         # Determine content type
@@ -229,11 +246,13 @@ def proxy_stream(stream_url):
         logger.info(f"Using content type: {content_type}")
         return generate_streaming_response(response, content_type)
     except requests.Timeout:
+        logger.error(f"Timeout connecting to stream: {original_url}")
         return Response("Stream timeout", status=504)
     except requests.HTTPError as e:
+        logger.error(f"HTTP error fetching stream: {e.response.status_code} - {original_url}")
         return Response(f"Failed to fetch stream: {str(e)}", status=e.response.status_code)
     except Exception as e:
-        logger.error(f"Stream proxy error: {str(e)}")
+        logger.error(f"Stream proxy error: {str(e)} - {original_url}")
         return Response("Failed to process stream", status=500)
 
 
