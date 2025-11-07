@@ -295,8 +295,11 @@ def group_matches(group_title, pattern, allow_partial_match=True):
     if "*" in pattern_lower or "?" in pattern_lower:
         return fnmatch.fnmatch(group_lower, pattern_lower)
     else:
-        # Simple substring match for non-wildcard patterns
-        return group_lower.startswith(pattern_lower) if allow_partial_match else False
+        if allow_partial_match:
+            # Simple substring match for non-wildcard patterns
+            return group_lower.startswith(pattern_lower)
+        else:
+            return group_lower == pattern_lower
 
 
 def get_required_params():
