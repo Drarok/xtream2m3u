@@ -114,6 +114,7 @@ GET /m3u
 - `url` (required): The base URL of your IPTV service
 - `username` (required): Your IPTV service username
 - `password` (required): Your IPTV service password
+- `exact_groups_only` (optional): Set to 'true' to disable partial group matching
 - `unwanted_groups` (optional): A comma-separated list of group names to exclude
 - `wanted_groups` (optional): A comma-separated list of group names to include (takes precedence over unwanted_groups)
 - `nostreamproxy` (optional): Set to 'true' to disable stream proxying

@@ -617,6 +617,7 @@ def generate_m3u():
     # Parse filter parameters (support both GET and POST for large filter lists)
     if request.method == "POST":
         data = request.get_json() or {}
+        exact_groups_only = str(data.get("exact_groups_only", "")).lower() == "true"
         unwanted_groups = parse_group_list(data.get("unwanted_groups", ""))
         wanted_groups = parse_group_list(data.get("wanted_groups", ""))
         unwanted_names = parse_group_list(data.get("unwanted_names", ""))
@@ -626,6 +627,7 @@ def generate_m3u():
         channel_id_tag = str(data.get("channel_id_tag", "channel-id"))
         logger.info("🔄 Processing POST request for M3U generation")
     else:
+        exact_groups_only = request.args.get("exact_groups_only", "").lower() == "true"
         unwanted_groups = parse_group_list(request.args.get("unwanted_groups", ""))
         wanted_groups = parse_group_list(request.args.get("wanted_groups", ""))
         unwanted_names = parse_group_list(request.args.get("unwanted_names", ""))
@@ -679,6 +681,9 @@ def generate_m3u():
     # Generate M3U playlist
     m3u_playlist = "#EXTM3U\n"
 
+    # Enable/disable partial group matching
+    match_partial_groups = not exact_groups_only
+
     # Track included groups
     included_groups = set()
     processed_streams = 0
@@ -716,12 +721,12 @@ def generate_m3u():
         if wanted_patterns:
             # Only include streams from specified groups (optimized matching)
             include_stream = any(
-                group_matches(group_title, wanted_group) for wanted_group in wanted_groups
+                group_matches(group_title, wanted_group, match_partial_groups) for wanted_group in wanted_groups
             )
         elif unwanted_patterns:
             # Exclude streams from unwanted groups (optimized matching)
             include_stream = not any(
-                group_matches(group_title, unwanted_group) for unwanted_group in unwanted_groups
+                group_matches(group_title, unwanted_group, match_partial_groups) for unwanted_group in unwanted_groups
             )
 
         if unwanted_names:
