@@ -88,10 +88,6 @@ def setup_custom_dns():
     logger.info("Custom DNS resolver set up")
 
 
-# Initialize DNS resolver
-setup_custom_dns()
-
-
 # No persistent connections - fresh connection for each request to avoid stale connection issues
 
 # Common request function for API endpoints
@@ -797,6 +793,8 @@ def generate_m3u():
 
 
 if __name__ == "__main__":
+    setup_custom_dns()
+
     parser = argparse.ArgumentParser(description="Run the Flask app.")
     parser.add_argument(
         "--port", type=int, default=5000, help="Port number to run the app on"
