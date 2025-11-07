@@ -616,6 +616,7 @@ def generate_m3u():
         data = request.get_json() or {}
         unwanted_groups = parse_group_list(data.get("unwanted_groups", ""))
         wanted_groups = parse_group_list(data.get("wanted_groups", ""))
+        unwanted_names = parse_group_list(data.get("unwanted_names", ""))
         no_stream_proxy = str(data.get("nostreamproxy", "")).lower() == "true"
         include_vod = str(data.get("include_vod", "false")).lower() == "true"
         include_channel_id = str(data.get("include_channel_id", "false")).lower() == "true"
@@ -624,6 +625,7 @@ def generate_m3u():
     else:
         unwanted_groups = parse_group_list(request.args.get("unwanted_groups", ""))
         wanted_groups = parse_group_list(request.args.get("wanted_groups", ""))
+        unwanted_names = parse_group_list(request.args.get("unwanted_names", ""))
         no_stream_proxy = request.args.get("nostreamproxy", "").lower() == "true"
         include_vod = request.args.get("include_vod", "false").lower() == "true"
         include_channel_id = request.args.get("include_channel_id", "false") == "true"
@@ -682,6 +684,7 @@ def generate_m3u():
     # Pre-compile filter patterns for massive filter lists (performance optimization)
     wanted_patterns = [pattern.lower() for pattern in wanted_groups] if wanted_groups else []
     unwanted_patterns = [pattern.lower() for pattern in unwanted_groups] if unwanted_groups else []
+    unwanted_names = [pattern.lower() for pattern in unwanted_names] if unwanted_names else []
 
     logger.info(f"🔍 Starting to filter {total_streams} streams...")
     batch_size = 10000  # Process streams in batches for better performance
@@ -716,6 +719,12 @@ def generate_m3u():
             # Exclude streams from unwanted groups (optimized matching)
             include_stream = not any(
                 group_matches(group_title, unwanted_group) for unwanted_group in unwanted_groups
+            )
+
+        if unwanted_names:
+            # Exclude streams from unwanted names
+            include_stream = not any(
+                group_matches(stream_name, unwanted_name, False) for unwanted_name in unwanted_names
             )
 
         processed_streams += 1
