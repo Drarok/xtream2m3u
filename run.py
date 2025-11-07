@@ -264,13 +264,15 @@ def group_matches(group_title, pattern, allow_partial_match=True):
     group_lower = group_title.lower()
     pattern_lower = pattern.lower()
 
+    has_wildcards = "*" in pattern_lower or "?" in pattern_lower
+
     # Handle spaces in pattern
     if " " in pattern_lower:
         # For patterns with spaces, split and check each part
         pattern_parts = pattern_lower.split()
         group_parts = group_lower.split()
 
-        if allow_partial_match:
+        if allow_partial_match or has_wildcards:
             # If pattern has more parts than group, can't match
             if len(pattern_parts) > len(group_parts):
                 return False
@@ -292,7 +294,7 @@ def group_matches(group_title, pattern, allow_partial_match=True):
         return True
 
     # Check for wildcard patterns
-    if "*" in pattern_lower or "?" in pattern_lower:
+    if has_wildcards:
         return fnmatch.fnmatch(group_lower, pattern_lower)
     else:
         if allow_partial_match:
