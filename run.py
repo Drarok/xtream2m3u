@@ -646,7 +646,7 @@ def generate_m3u():
     # Log filter parameters (truncate if too long for readability)
     wanted_display = f"{len(wanted_groups)} groups" if len(wanted_groups) > 10 else str(wanted_groups)
     unwanted_display = f"{len(unwanted_groups)} groups" if len(unwanted_groups) > 10 else str(unwanted_groups)
-    logger.info(f"Filter parameters - wanted_groups: {wanted_display}, unwanted_groups: {unwanted_display}, include_vod: {include_vod}")
+    logger.info(f"Filter parameters - exact_groups_only: {exact_groups_only}, wanted_groups: {wanted_display}, unwanted_groups: {unwanted_display}, include_vod: {include_vod}")
 
     # Warn about massive filter lists
     total_filters = len(wanted_groups) + len(unwanted_groups)
@@ -731,9 +731,11 @@ def generate_m3u():
 
         if unwanted_names:
             # Exclude streams from unwanted names
-            include_stream = not any(
+            exclude_stream = any(
                 group_matches(stream_name, unwanted_name, False) for unwanted_name in unwanted_names
             )
+            if exclude_stream:
+                include_stream = False
 
         processed_streams += 1
 
