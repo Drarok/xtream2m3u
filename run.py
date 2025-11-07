@@ -282,7 +282,7 @@ def group_matches(group_title, pattern):
                 if not fnmatch.fnmatch(group_parts[i], part):
                     return False
             else:
-                if part not in group_parts[i]:
+                if not group_parts[i].startswith(part):
                     return False
         return True
 
@@ -291,7 +291,7 @@ def group_matches(group_title, pattern):
         return fnmatch.fnmatch(group_lower, pattern_lower)
     else:
         # Simple substring match for non-wildcard patterns
-        return pattern_lower in group_lower
+        return group_lower.startswith(pattern_lower)
 
 
 def get_required_params():
