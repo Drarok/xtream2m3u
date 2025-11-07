@@ -258,7 +258,7 @@ def parse_group_list(group_string):
     return [group.strip() for group in group_string.split(",")] if group_string else []
 
 
-def group_matches(group_title, pattern):
+def group_matches(group_title, pattern, allow_partial_match=True):
     """Check if a group title matches a pattern, supporting wildcards and exact matching"""
     # Convert to lowercase for case-insensitive matching
     group_lower = group_title.lower()
@@ -270,9 +270,14 @@ def group_matches(group_title, pattern):
         pattern_parts = pattern_lower.split()
         group_parts = group_lower.split()
 
-        # If pattern has more parts than group, can't match
-        if len(pattern_parts) > len(group_parts):
-            return False
+        if allow_partial_match:
+            # If pattern has more parts than group, can't match
+            if len(pattern_parts) > len(group_parts):
+                return False
+        else:
+            # If pattern has different parts than group, can't match
+            if len(pattern_parts) != len(group_parts):
+                return False
 
         # Check each part of the pattern against group parts
         for i, part in enumerate(pattern_parts):
@@ -291,7 +296,7 @@ def group_matches(group_title, pattern):
         return fnmatch.fnmatch(group_lower, pattern_lower)
     else:
         # Simple substring match for non-wildcard patterns
-        return group_lower.startswith(pattern_lower)
+        return group_lower.startswith(pattern_lower) if allow_partial_match else False
 
 
 def get_required_params():
